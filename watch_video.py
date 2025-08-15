@@ -4,20 +4,38 @@ import time
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 
-# Danh sách thiết bị (thay bằng ID thật)
+# Danh sách thiết bị
 devices = ["emulator-5554", "emulator-5556"]
+
+# --- Hàm lấy kích thước màn hình ---
+def get_screen_size(device_id):
+    result = subprocess.run(
+        f'adb -s {device_id} shell wm size', shell=True, capture_output=True, text=True
+    )
+    output = result.stdout.strip()
+    if "Physical size" in output:
+        size_str = output.split("Physical size:")[-1].strip()
+        width, height = map(int, size_str.split("x"))
+        return width, height
+    return 1080, 1920  # default nếu không lấy được
 
 # --- Hàm scroll trên từng thiết bị ---
 def scroll_device(device_id, times, delay, log_widget, pause_every=3, pause_duration=2):
+    width, height = get_screen_size(device_id)
+    x_center = width // 2
+    y_start = int(height * 0.8)
+    y_end = int(height * 0.2)
+
     log_widget.insert(tk.END, f"[{device_id}] Bắt đầu scroll {times} lần\n")
     log_widget.see(tk.END)
+
     for i in range(1, times + 1):
-        subprocess.Popen(f'adb -s {device_id} shell input swipe 415 1172 225 430 300', shell=True)
+        subprocess.Popen(f'adb -s {device_id} shell input swipe {x_center} {y_start} {x_center} {y_end} 300', shell=True)
         log_widget.insert(tk.END, f"[{device_id}] Scroll lần {i}\n")
         log_widget.see(tk.END)
         time.sleep(delay)
 
-        # Nếu đã scroll đủ pause_every lần thì dừng tạm
+        # Pause giữa các vòng
         if i % pause_every == 0 and i != times:
             log_widget.insert(tk.END, f"[{device_id}] Dừng {pause_duration}s giữa các vòng\n")
             log_widget.see(tk.END)
@@ -43,12 +61,10 @@ def start_scroll():
         t.start()
         threads.append(t)
 
-    # Thread kiểm tra khi tất cả scroll xong
     def check_threads():
         for t in threads:
             t.join()
         messagebox.showinfo("Hoàn thành", "Đã scroll xong tất cả thiết bị!")
-
     threading.Thread(target=check_threads).start()
 
 # --- GUI ---
@@ -58,27 +74,26 @@ root.title("ADB Scroll Phone Farm")
 tk.Label(root, text="Số lần scroll:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
 times_entry = tk.Entry(root)
 times_entry.grid(row=0, column=1, padx=10, pady=5)
-times_entry.insert(0, "9")  # default
+times_entry.insert(0, "9")
 
 tk.Label(root, text="Thời gian chờ sau mỗi lần (s):").grid(row=1, column=0, padx=10, pady=5, sticky="w")
 delay_entry = tk.Entry(root)
 delay_entry.grid(row=1, column=1, padx=10, pady=5)
-delay_entry.insert(0, "0.5")  # default
+delay_entry.insert(0, "0.5")
 
 tk.Label(root, text="Số lần trước khi dừng tạm:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
 pause_every_entry = tk.Entry(root)
 pause_every_entry.grid(row=2, column=1, padx=10, pady=5)
-pause_every_entry.insert(0, "3")  # default
+pause_every_entry.insert(0, "3")
 
 tk.Label(root, text="Thời gian dừng tạm (s):").grid(row=3, column=0, padx=10, pady=5, sticky="w")
 pause_duration_entry = tk.Entry(root)
 pause_duration_entry.grid(row=3, column=1, padx=10, pady=5)
-pause_duration_entry.insert(0, "2")  # default
+pause_duration_entry.insert(0, "2")
 
 start_button = tk.Button(root, text="Start Scroll", command=start_scroll)
 start_button.grid(row=4, column=0, columnspan=2, pady=10)
 
-# --- ScrolledText để hiển thị log trạng thái ---
 log_text = scrolledtext.ScrolledText(root, width=50, height=15)
 log_text.grid(row=5, column=0, columnspan=2, padx=10, pady=10)
 
