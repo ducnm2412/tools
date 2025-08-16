@@ -103,7 +103,7 @@ def scroll_device(device_id, times, delay, log_widget, pause_every=3, pause_dura
         if not is_running:
             return
             
-        subprocess.Popen(f'adb -s {device_id} shell input swipe {x_center} {y_start} {x_center} {y_end} 300', shell=True)
+        subprocess.Popen(f'adb -s {device_id} shell input swipe {x_center} {y_start} {x_center} {y_end} 500', shell=True)
         log_widget.insert(tk.END, f"[{device_id}] Scroll lần {i}\n")
         log_widget.see(tk.END)
         time.sleep(delay)
